@@ -1,0 +1,88 @@
+-- =========================================================================
+-- [ServerBlockManager] ВАША ОРИГИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
+-- =========================================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local worldFolder = workspace:WaitForChild("WorldFolder")
+
+local breakEvent = ReplicatedStorage:WaitForChild("BreakBlockEvent")
+local placeEvent = ReplicatedStorage:WaitForChild("PlaceBlockEvent")
+
+local BLOCK_SIZE = 3 
+local MAX_REACH_DISTANCE = 20 -- Максимальная дистанция (в шпильках), откуда игрок может дотянуться
+
+-- Функция для наложения текстур
+local function applyTexturesToBlock(block, textureID)
+	local faces = {
+		Enum.NormalId.Top, Enum.NormalId.Bottom, 
+		Enum.NormalId.Left, Enum.NormalId.Right, 
+		Enum.NormalId.Front, Enum.NormalId.Back
+	}
+	for _, face in pairs(faces) do
+		local texture = Instance.new("Texture")
+		texture.Texture = textureID
+		texture.Face = face
+		texture.StudsPerTileU = BLOCK_SIZE
+		texture.StudsPerTileV = BLOCK_SIZE
+		texture.Parent = block
+	end
+end
+
+-- Функция проверки: не пытается ли читер сломать/поставить блок издалека
+local function isPlayerCloseEnough(player, targetPosition)
+	local character = player.Character
+	if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+
+	local distance = (character.HumanoidRootPart.Position - targetPosition).Magnitude
+	return distance <= MAX_REACH_DISTANCE
+end
+
+-- Функция проверки привата (Заглушка для будущей системы приватов FunTime)
+local function isInsidePrivateZone(player, position)
+	-- TODO: Сюда мы позже добавим проверку, принадлежит ли эта территория другому клану/игроку
+	return false 
+end
+
+-- СЕРВЕР ЛОМАЕТ БЛОК
+breakEvent.OnServerEvent:Connect(function(player, targetPart)
+	-- Защита 1: Проверяем, существует ли блок и находится ли он в папке мира
+	if not targetPart or not targetPart:IsA("BasePart") or not targetPart:IsDescendantOf(worldFolder) then return end
+
+	-- Защита 2: Проверка на дистанцию (анти-чит)
+	if not isPlayerCloseEnough(player, targetPart.Position) then return end
+
+	-- Защита 3: Проверка привата
+	if isInsidePrivateZone(player, targetPart.Position) then
+		return 
+	end
+
+	-- Если все проверки пройдены — ломаем
+	targetPart:Destroy() 
+end)
+
+-- СЕРВЕР СТАВИТ БЛОК
+placeEvent.OnServerEvent:Connect(function(player, targetPart, normal)
+	-- Защита 1: Проверяем блок, на который кликнули
+	if not targetPart or not targetPart:IsA("BasePart") or not targetPart:IsDescendantOf(worldFolder) then return end
+	if not normal or typeof(normal) ~= "Vector3" then return end 
+
+	-- Вычисляем будущую позицию блока
+	local newBlockPosition = targetPart.Position + (normal * BLOCK_SIZE)
+
+	-- Защита 2: Анти-чит на дистанцию
+	if not isPlayerCloseEnough(player, newBlockPosition) then return end
+
+	-- Защита 3: Проверка привата на новой позиции
+	if isInsidePrivateZone(player, newBlockPosition) then return end
+
+	-- Спавн блока
+	local newBlock = Instance.new("Part")
+	newBlock.Size = Vector3.new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+	newBlock.Shape = Enum.PartType.Block
+	newBlock.Position = newBlockPosition
+	newBlock.Anchored = true
+	newBlock.Color = Color3.fromRGB(130, 85, 45)
+
+	applyTexturesToBlock(newBlock, "rbxassetid://15610741270")
+	newBlock.Parent = worldFolder
+end)
