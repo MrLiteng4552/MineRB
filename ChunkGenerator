@@ -1,0 +1,460 @@
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local worldFolder = Workspace:FindFirstChild("WorldFolder")
+if not worldFolder then
+	worldFolder = Instance.new("Folder", Workspace)
+	worldFolder.Name = "WorldFolder"
+end
+
+local GRID_CHUNKS_X = 4
+local GRID_CHUNKS_Z = 4
+
+local CHUNK_SIZE_X = 16
+local CHUNK_SIZE_Z = 16
+local CHUNK_HEIGHT = 128
+local BLOCK_SIZE = 3    
+
+local WATER_LEVEL = 40
+local LAVA_LEVEL_SURFACE = 15 
+
+local SCALE_SURFACE = 45        
+local AMPLITUDE_SURFACE = 35    
+local BASE_HEIGHT = 45 
+local GIANT_BIOME_SCALE = 220 
+
+local AIR = 0
+local STONE = 1
+local DIRT = 2
+local GRASS = 3
+local WOOD = 4
+local LEAVES = 5
+local WATER = 6
+local LAVA = 7
+local BEDROCK = 8
+local COAL = 9
+local IRON = 10
+local GOLD = 11
+local DIAMOND = 12
+local GRAVEL = 13
+local DIORITE = 14
+local ANDESITE = 15
+local LAPIS = 16
+local EMERALD = 17
+local SAND = 18
+local CACTUS = 19
+local BIRCH_WOOD = 20
+local BIRCH_LEAVES = 21
+local SPRUCE_WOOD = 23      
+local SPRUCE_LEAVES = 24    
+local DARK_OAK_WOOD = 25    
+local DARK_OAK_LEAVES = 26  
+local PODZOL = 27           
+local TERRACOTTA = 28       
+local ICE = 29              
+local AMETHYST_BLOCK = 30   
+local CALCITE = 31          
+local SMOOTH_BASALT = 32    
+local AMETHYST_CLUSTER = 33 
+local AMETHYST_BUD = 34     
+
+local SEED = math.random(1, 100000)
+local SEED_OFFSET = SEED / 7.31
+
+local BIOME_PLAINS = "PLAINS"
+local BIOME_DESERT = "DESERT"
+local BIOME_FOREST = "FOREST"
+local BIOME_TAIGA = "TAIGA"
+local BIOME_DARK_FOREST = "DARK_FOREST"
+local BIOME_BADLANDS = "BADLANDS"
+local BIOME_BIRCH_FOREST = "BIRCH_FOREST"
+local BIOME_DEEP_OCEAN = "DEEP_OCEAN"
+local function applyVisualsToBlock(block, blockID)
+	block.Size = Vector3.new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+	block.Shape = Enum.PartType.Block
+	block.Anchored = true
+	block.CanCollide = (blockID ~= WATER and blockID ~= LAVA)
+
+	if blockID == GRASS then block.Color = Color3.fromRGB(95, 158, 45)
+	elseif blockID == DIRT then block.Color = Color3.fromRGB(130, 85, 45)
+	elseif blockID == STONE then block.Color = Color3.fromRGB(115, 115, 115)
+	elseif blockID == WATER then block.Color = Color3.fromRGB(45, 95, 230) block.Transparency = 0.4 block.Material = Enum.Material.Glass
+	elseif blockID == LAVA then block.Color = Color3.fromRGB(255, 70, 0) block.Material = Enum.Material.Neon
+	elseif blockID == BEDROCK then block.Color = Color3.fromRGB(25, 25, 25)
+	elseif blockID == COAL then block.Color = Color3.fromRGB(45, 45, 45)
+	elseif blockID == IRON then block.Color = Color3.fromRGB(220, 170, 130)
+	elseif blockID == GOLD then block.Color = Color3.fromRGB(255, 215, 0)
+	elseif blockID == DIAMOND then block.Color = Color3.fromRGB(0, 240, 255) block.Material = Enum.Material.Neon
+	elseif blockID == GRAVEL then block.Color = Color3.fromRGB(140, 135, 135)
+	elseif blockID == DIORITE then block.Color = Color3.fromRGB(210, 210, 210)
+	elseif blockID == ANDESITE then block.Color = Color3.fromRGB(135, 135, 135)
+	elseif blockID == LAPIS then block.Color = Color3.fromRGB(15, 50, 160)
+	elseif blockID == EMERALD then block.Color = Color3.fromRGB(0, 230, 70) block.Material = Enum.Material.Neon
+	elseif blockID == SAND then block.Color = Color3.fromRGB(220, 205, 140)
+	elseif blockID == WOOD then block.Color = Color3.fromRGB(100, 75, 50) 
+	elseif blockID == LEAVES then block.Color = Color3.fromRGB(60, 140, 50) 
+	elseif blockID == CACTUS then block.Color = Color3.fromRGB(40, 130, 45) 
+	elseif blockID == BIRCH_WOOD then block.Color = Color3.fromRGB(235, 235, 230) 
+	elseif blockID == BIRCH_LEAVES then block.Color = Color3.fromRGB(130, 190, 100) 
+	elseif blockID == SPRUCE_WOOD then block.Color = Color3.fromRGB(65, 45, 25)
+	elseif blockID == SPRUCE_LEAVES then block.Color = Color3.fromRGB(45, 90, 60)
+	elseif blockID == PODZOL then block.Color = Color3.fromRGB(110, 75, 40)
+	elseif blockID == TERRACOTTA then block.Color = Color3.fromRGB(180, 110, 70)
+	elseif blockID == ICE then block.Color = Color3.fromRGB(150, 210, 255) block.Material = Enum.Material.Glass block.Transparency = 0.15
+	elseif blockID == AMETHYST_BLOCK then block.Color = Color3.fromRGB(130, 75, 180) block.Material = Enum.Material.SmoothPlastic
+	elseif blockID == CALCITE then block.Color = Color3.fromRGB(235, 230, 225) block.Material = Enum.Material.Concrete
+	elseif blockID == SMOOTH_BASALT then block.Color = Color3.fromRGB(35, 35, 38) block.Material = Enum.Material.Basalt
+	elseif blockID == AMETHYST_CLUSTER then block.Color = Color3.fromRGB(160, 110, 220) block.Material = Enum.Material.SmoothPlastic
+	elseif blockID == AMETHYST_BUD then 
+		block.Color = Color3.fromRGB(210, 160, 255) 
+		block.Material = Enum.Material.Neon 
+		block.Size = Vector3.new(BLOCK_SIZE * 0.7, BLOCK_SIZE * 0.7, BLOCK_SIZE * 0.7)
+	end
+end
+local function setBlockInternal(chunkData, x, z, y, blockID)
+	if x >= 1 and x <= CHUNK_SIZE_X and z >= 1 and z <= CHUNK_SIZE_Z and y >= 1 and y <= CHUNK_HEIGHT then
+		local currentBlock = chunkData[x][z][y]
+		if currentBlock == AIR or currentBlock == WATER then
+			chunkData[x][z][y] = blockID
+		end
+	end
+end
+
+local function isSpaceClearForTree(chunkData, centerX, centerZ, centerY, radius)
+	for dx = -radius, radius do
+		for dz = -radius, radius do
+			local tx = centerX + dx
+			local tz = centerZ + dz
+			if chunkData[tx] and chunkData[tx][tz] then
+				local b = chunkData[tx][tz][centerY + 1]
+				if b == WOOD or b == BIRCH_WOOD or b == SPRUCE_WOOD or b == DARK_OAK_WOOD then
+					return false
+				end
+			end
+		end
+	end
+	return true
+end
+
+local function spawnVein(chunkData, centerX, centerZ, centerY, oreID, veinSize)
+	for dx = -veinSize, veinSize do
+		for dz = -veinSize, veinSize do
+			for dy = -veinSize, veinSize do
+				local tx = centerX + dx
+				local tz = centerZ + dz
+				local ty = centerY + dy
+				if tx >= 1 and tx <= CHUNK_SIZE_X and tz >= 1 and tz <= CHUNK_SIZE_Z and ty >= 5 and ty <= CHUNK_HEIGHT then
+					local distance = math.sqrt(dx*dx + dz*dz + dy*dy)
+					if distance <= veinSize + math.random(-1, 0) and chunkData[tx][tz][ty] == STONE then
+						chunkData[tx][tz][ty] = oreID
+					end
+				end
+			end
+		end
+	end
+end
+
+local function generateFallenLog(chunkData, startX, startZ, startY, logLength, woodID, leafID)
+	local dirX = math.random(0, 1)
+	local dirZ = (dirX == 0) and 1 or 0
+
+	for i = 0, logLength - 1 do
+		local lx = startX + (i * dirX)
+		local lz = startZ + (i * dirZ)
+		setBlockInternal(chunkData, lx, lz, startY + 1, woodID)
+		if math.random(1, 4) == 1 then
+			setBlockInternal(chunkData, lx + dirZ, lz + dirX, startY + 1, leafID)
+		end
+	end
+end
+local function generateLeavesSphereInternal(chunkData, centerX, centerZ, centerY, radius, leafID)
+	for dx = -radius, radius do
+		for dz = -radius, radius do
+			for dy = -radius, radius do
+				local distance = math.sqrt(dx*dx + dz*dz + dy*dy)
+				if distance <= radius + (math.random(-10, 5) / 10) then
+					setBlockInternal(chunkData, centerX + dx, centerZ + dz, centerY + dy, leafID)
+				end
+			end
+		end
+	end
+end
+
+local function generateLayeredPineLeaves(chunkData, centerX, centerZ, bottomY, topY, leafID)
+	setBlockInternal(chunkData, centerX, centerZ, topY + 1, leafID)
+	local currentRadius = 1
+	for currentY = topY, bottomY, -1 do
+		for dx = -currentRadius, currentRadius do
+			for dz = -currentRadius, currentRadius do
+				if math.abs(dx) + math.abs(dz) <= currentRadius + 1 then
+					if not (dx == 0 and dz == 0) or currentY > topY then
+						setBlockInternal(chunkData, centerX + dx, centerZ + dz, currentY, leafID)
+					end
+				end
+			end
+		end
+		if currentRadius == 1 then currentRadius = 2
+		elseif currentRadius == 2 then currentRadius = (math.random(1, 2) == 1) and 1 or 3
+		else currentRadius = 2 end
+	end
+end
+
+local function generateAmethystGeode(chunkData, cx, cz, cy)
+	local radius = math.random(7, 9)
+	for dx = -radius, radius do
+		for dz = -radius, radius do
+			for dy = -radius, radius do
+				local tx, ty, tz = cx + dx, cy + dy, cz + dz
+				if tx >= 1 and tx <= CHUNK_SIZE_X and tz >= 1 and tz <= CHUNK_SIZE_Z and ty >= 6 and ty <= CHUNK_HEIGHT then
+					local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+					if chunkData[tx][tz][ty] == STONE or chunkData[tx][tz][ty] == AIR then
+						if dist <= radius and dist > radius - 1.2 then chunkData[tx][tz][ty] = SMOOTH_BASALT
+						elseif dist <= radius - 1.2 and dist > radius - 2.2 then chunkData[tx][tz][ty] = CALCITE
+						elseif dist <= radius - 2.2 and dist > radius - 3.5 then chunkData[tx][tz][ty] = AMETHYST_BLOCK
+						elseif dist <= radius - 3.5 then
+							chunkData[tx][tz][ty] = AIR
+							if dist > radius - 4.5 and math.random(1, 10) == 1 then
+								chunkData[tx][tz][ty] = AMETHYST_CLUSTER
+								local budY = ty + (dy > 0 and -1 or 1)
+								if budY >= 1 and budY <= CHUNK_HEIGHT then
+									chunkData[tx][tz][budY] = AMETHYST_BUD
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+local function growStructureInternal(chunkData, startX, startZ, startY, structureType)
+	if structureType == "OAK_SMALL" then
+		local trunkHeight = math.random(4, 5)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, WOOD) end
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight, 2, LEAVES)
+	elseif structureType == "OAK_BIG" then
+		local trunkHeight = math.random(6, 8)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, WOOD) end
+		setBlockInternal(chunkData, startX + 1, startZ, startY + trunkHeight - 2, WOOD)
+		generateLeavesSphereInternal(chunkData, startX + 2, startZ, startY + trunkHeight - 1, 2, LEAVES)
+		setBlockInternal(chunkData, startX, startZ - 1, startY + trunkHeight - 3, WOOD)
+		generateLeavesSphereInternal(chunkData, startX, startZ - 2, startY + trunkHeight - 2, 2, LEAVES)
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight, 3, LEAVES)
+	elseif structureType == "OAK_TALL" then
+		local trunkHeight = math.random(7, 9)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, WOOD) end
+		for dy = -3, 2 do generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight + dy, (dy == -3 or dy == 2) and 1 or 2, LEAVES) end
+	elseif structureType == "BIRCH_NORMAL" then
+		local trunkHeight = math.random(5, 7)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, BIRCH_WOOD) end
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight, 2, BIRCH_LEAVES)
+	elseif structureType == "BIRCH_TALL" then
+		local trunkHeight = math.random(7, 10)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, BIRCH_WOOD) end
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight, 3, BIRCH_LEAVES)
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight - 2, 2, BIRCH_LEAVES)
+	elseif structureType == "CACTUS" then
+		local cactusHeight = math.random(2, 4)
+		for h = 1, cactusHeight do setBlockInternal(chunkData, startX, startZ, startY + h, CACTUS) end
+		if cactusHeight >= 3 and math.random(1, 2) == 1 then
+			setBlockInternal(chunkData, startX + 1, startZ, startY + 2, CACTUS)
+			setBlockInternal(chunkData, startX + 1, startZ, startY + 3, CACTUS)
+		end
+	elseif structureType == "SPRUCE_NORMAL" then
+		local trunkHeight = math.random(5, 7)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, SPRUCE_WOOD) end
+		generateLayeredPineLeaves(chunkData, startX, startZ, startY + math.random(2, 3), startY + trunkHeight, SPRUCE_LEAVES)
+	elseif structureType == "SPRUCE_TALL" then
+		local trunkHeight = math.random(8, 12)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, SPRUCE_WOOD) end
+		generateLayeredPineLeaves(chunkData, startX, startZ, startY + math.random(3, 4), startY + trunkHeight, SPRUCE_LEAVES)
+	elseif structureType == "DARK_OAK" then
+		local trunkHeight = math.random(5, 7)
+		for h = 1, trunkHeight do setBlockInternal(chunkData, startX, startZ, startY + h, DARK_OAK_WOOD) end
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight, 3, DARK_OAK_LEAVES)
+		generateLeavesSphereInternal(chunkData, startX, startZ, startY + trunkHeight - 1, 4, DARK_OAK_LEAVES)
+	elseif structureType == "FALLEN_OAK" then generateFallenLog(chunkData, startX, startZ, startY, math.random(3, 5), WOOD, LEAVES)
+	elseif structureType == "FALLEN_SPRUCE" then generateFallenLog(chunkData, startX, startZ, startY, math.random(4, 6), SPRUCE_WOOD, SPRUCE_LEAVES)
+	elseif structureType == "FALLEN_BIRCH" then generateFallenLog(chunkData, startX, startZ, startY, math.random(3, 5), BIRCH_WOOD, BIRCH_LEAVES)
+	end
+end
+local function getBiomeAt(gx, gz)
+	local tempNoise = math.noise((gx + SEED_OFFSET) / GIANT_BIOME_SCALE, (gz + SEED_OFFSET) / GIANT_BIOME_SCALE, 0.5)
+	local moistNoise = math.noise((gx + SEED_OFFSET) / GIANT_BIOME_SCALE, (gz + SEED_OFFSET) / GIANT_BIOME_SCALE, 15.5)
+	local oceanNoise = math.noise((gx + SEED_OFFSET) / 400, (gz + SEED_OFFSET) / 400, 99.4)
+
+	if oceanNoise < -0.25 then return BIOME_DEEP_OCEAN end
+
+	if tempNoise > 0.3 then
+		if moistNoise < -0.1 then return BIOME_BADLANDS else return BIOME_DESERT end
+	elseif tempNoise < -0.25 then
+		return BIOME_TAIGA
+	else
+		if moistNoise > 0.35 then return BIOME_DARK_FOREST
+		elseif moistNoise > 0.05 then return BIOME_BIRCH_FOREST
+		elseif moistNoise < -0.2 then return BIOME_PLAINS
+		else return BIOME_FOREST end
+	end
+end
+
+local function getBiomeParameters(biomeName)
+	if biomeName == BIOME_DEEP_OCEAN then return 4, 18
+	elseif biomeName == BIOME_TAIGA then return 25, 46
+	elseif biomeName == BIOME_DARK_FOREST then return 18, 44
+	elseif biomeName == BIOME_BADLANDS then return 16, 44
+	elseif biomeName == BIOME_PLAINS or biomeName == BIOME_DESERT then return 5, 41
+	else return AMPLITUDE_SURFACE, BASE_HEIGHT end
+end
+
+local function generateChunkData(chunkX, chunkZ)
+	local chunkData = {}
+	for x = 1, CHUNK_SIZE_X do
+		chunkData[x] = {}
+		for z = 1, CHUNK_SIZE_Z do
+			chunkData[x][z] = {}
+			for y = 1, CHUNK_HEIGHT do chunkData[x][z][y] = AIR end
+		end
+	end
+
+	local globalOffsetX = (chunkX - 1) * CHUNK_SIZE_X
+	local globalOffsetZ = (chunkZ - 1) * CHUNK_SIZE_Z
+
+	for x = 1, CHUNK_SIZE_X do
+		for z = 1, CHUNK_SIZE_Z do
+			local gx = globalOffsetX + x
+			local gz = globalOffsetZ + z
+
+			local riverNoise = math.abs(math.noise((gx + SEED_OFFSET) / 140, (gz + SEED_OFFSET) / 140, 44.1))
+			local targetBiome = getBiomeAt(gx, gz)
+
+			local totalAmp, totalBase, weightSum = 0, 0, 0
+			local sampleRadius = 3
+
+			for sx = -sampleRadius, sampleRadius, 3 do
+				for sz = -sampleRadius, sampleRadius, 3 do
+					local sampleBiome = getBiomeAt(gx + sx, gz + sz)
+					local amp, base = getBiomeParameters(sampleBiome)
+					local weight = 1 / (1 + math.sqrt(sx*sx + sz*sz))
+					totalAmp = totalAmp + (amp * weight)
+					totalBase = totalBase + (base * weight)
+					weightSum = weightSum + weight
+				end
+			end
+
+			local currentAmp = totalAmp / weightSum
+			local currentBase = totalBase / weightSum
+
+			local noise1 = math.noise((gx + SEED_OFFSET) / SCALE_SURFACE, (gz + SEED_OFFSET) / SCALE_SURFACE, 11.5)
+			local noise2 = math.noise((gx + SEED_OFFSET) / (SCALE_SURFACE * 2), (gz + SEED_OFFSET) / (SCALE_SURFACE * 2), 22.1) * 0.5
+			local noise3 = math.noise((gx + SEED_OFFSET) / 25, (gz + SEED_OFFSET) / 25, 88.2) * 0.15
+
+			local combinedNoise = (noise1 + noise2 + noise3) / 1.65
+			local surfaceHeight = math.floor((combinedNoise + 1) * 0.5 * currentAmp) + currentBase
+
+			if riverNoise < 0.035 and targetBiome ~= BIOME_DEEP_OCEAN then
+				local riverDepression = math.floor((0.035 - riverNoise) * 350)
+				surfaceHeight = math.max(24, surfaceHeight - riverDepression)
+			end
+
+			-- Наполнение слоев блоков камнем, землей и травой
+			for y = 1, CHUNK_HEIGHT do
+				if y <= surfaceHeight then
+					if y <= 4 then
+						if y == 1 or math.random(1, 100) <= (y == 2 and 70 or y == 3 and 50 or 20) then chunkData[x][z][y] = BEDROCK
+						else chunkData[x][z][y] = STONE end
+					elseif y > 4 and y < surfaceHeight - 3 then
+						if math.abs(math.noise((gx + SEED_OFFSET) / 14, y / 8, (gz + SEED_OFFSET) / 14)) > 0.46 then
+							chunkData[x][z][y] = AIR
+							if y <= 10 then chunkData[x][z][y] = LAVA end
+						else chunkData[x][z][y] = STONE end
+					elseif y >= surfaceHeight - 3 and y < surfaceHeight then
+						if targetBiome == BIOME_DESERT or targetBiome == BIOME_DEEP_OCEAN then chunkData[x][z][y] = SAND 
+						elseif targetBiome == BIOME_BADLANDS then chunkData[x][z][y] = TERRACOTTA
+						else chunkData[x][z][y] = DIRT end
+					elseif y == surfaceHeight then
+						if y <= WATER_LEVEL + 1 and y >= WATER_LEVEL - 2 then chunkData[x][z][y] = SAND 
+						elseif targetBiome == BIOME_DESERT or targetBiome == BIOME_DEEP_OCEAN then chunkData[x][z][y] = SAND
+						elseif targetBiome == BIOME_BADLANDS then chunkData[x][z][y] = TERRACOTTA
+						elseif targetBiome == BIOME_TAIGA then chunkData[x][z][y] = (math.random(1, 100) <= 35) and PODZOL or GRASS
+						else chunkData[x][z][y] = GRASS end
+					end
+				elseif y > surfaceHeight and y <= WATER_LEVEL then 
+					if targetBiome == BIOME_TAIGA and y >= WATER_LEVEL - 2 then chunkData[x][z][y] = ICE
+					else chunkData[x][z][y] = WATER end
+				elseif y > surfaceHeight and y <= LAVA_LEVEL_SURFACE then chunkData[x][z][y] = LAVA end
+			end
+
+			-- Рассадка сгущенной растительности поверх сформированной земли
+			if x > 3 and x < CHUNK_SIZE_X - 2 and z > 3 and z < CHUNK_SIZE_Z - 2 then
+				local topBlock = chunkData[x][z][surfaceHeight]
+				local rand = math.random(1, 100)
+
+				if topBlock == GRASS or topBlock == PODZOL then
+					if isSpaceClearForTree(chunkData, x, z, surfaceHeight, 2) then
+						if targetBiome == BIOME_FOREST and rand <= 22 then growStructureInternal(chunkData, x, z, surfaceHeight, ({"OAK_SMALL", "OAK_BIG", "OAK_TALL"})[math.random(1, 3)])
+						elseif targetBiome == BIOME_BIRCH_FOREST and rand <= 25 then growStructureInternal(chunkData, x, z, surfaceHeight, ({"BIRCH_NORMAL", "BIRCH_TALL"})[math.random(1, 2)])
+						elseif targetBiome == BIOME_TAIGA and rand <= 24 then growStructureInternal(chunkData, x, z, surfaceHeight, ({"SPRUCE_NORMAL", "SPRUCE_TALL"})[math.random(1, 2)])
+						elseif targetBiome == BIOME_DARK_FOREST and rand <= 32 then growStructureInternal(chunkData, x, z, surfaceHeight, "DARK_OAK") end
+					end
+					if targetBiome == BIOME_FOREST and rand == 23 then growStructureInternal(chunkData, x, z, surfaceHeight, "FALLEN_OAK")
+					elseif targetBiome == BIOME_BIRCH_FOREST and rand == 26 then growStructureInternal(chunkData, x, z, surfaceHeight, "FALLEN_BIRCH")
+					elseif targetBiome == BIOME_TAIGA and rand == 25 then growStructureInternal(chunkData, x, z, surfaceHeight, "FALLEN_SPRUCE") end
+				end
+				if targetBiome == BIOME_PLAINS and topBlock == GRASS and rand <= 4 and isSpaceClearForTree(chunkData, x, z, surfaceHeight, 4) then growStructureInternal(chunkData, x, z, surfaceHeight, "OAK_SMALL") end
+				if topBlock == SAND and targetBiome == BIOME_DESERT and rand <= 5 and surfaceHeight > WATER_LEVEL then growStructureInternal(chunkData, x, z, surfaceHeight, "CACTUS") end
+			end
+		end
+	end
+
+	if chunkX == 1 and chunkZ == 1 then
+		generateAmethystGeode(chunkData, 8, 8, 22)
+	else
+		if math.random(1, 100) <= 30 then
+			generateAmethystGeode(chunkData, math.random(5, CHUNK_SIZE_X - 4), math.random(5, CHUNK_SIZE_Z - 4), math.random(12, 22))
+		end
+	end
+
+	local function attemptOreSpawn(oreID, count, minY, maxY, veinSize)
+		for i = 1, count do
+			local rx, rz, ry = math.random(1, CHUNK_SIZE_X), math.random(1, CHUNK_SIZE_Z), math.random(minY, maxY)
+			if chunkData[rx] and chunkData[rx][rz] and chunkData[rx][rz][ry] == STONE then spawnVein(chunkData, rx, rz, ry, oreID, veinSize) end
+		end
+	end
+
+	attemptOreSpawn(DIAMOND, 4, 5, 16, 1) 
+	attemptOreSpawn(GOLD, 6, 5, 32, 1) 
+	attemptOreSpawn(LAPIS, 6, 15, 50, 1) 
+	attemptOreSpawn(IRON, 16, 5, 65, 2) 
+	attemptOreSpawn(COAL, 22, 5, 80, 2) 
+	attemptOreSpawn(EMERALD, 4, 45, 90, 0) 
+	attemptOreSpawn(DIORITE, 8, 8, 30, 2) 
+	attemptOreSpawn(ANDESITE, 8, 8, 30, 2)
+	attemptOreSpawn(GRAVEL, 8, 8, 25, 2)
+
+	return chunkData
+end
+
+local function renderChunk(chunkX, chunkZ)
+	local chunkData = generateChunkData(chunkX, chunkZ)
+	local globalBlockOffsetX = (chunkX - 1) * CHUNK_SIZE_X * BLOCK_SIZE
+	local globalBlockOffsetZ = (chunkZ - 1) * CHUNK_SIZE_Z * BLOCK_SIZE
+	for x = 1, CHUNK_SIZE_X do
+		for z = 1, CHUNK_SIZE_Z do
+			for y = 1, CHUNK_HEIGHT do
+				local blockID = chunkData[x][z][y]
+				if blockID ~= AIR then
+					local block = Instance.new("Part")
+					block.Position = Vector3.new(globalBlockOffsetX + (x * BLOCK_SIZE), y * BLOCK_SIZE, globalBlockOffsetZ + (z * BLOCK_SIZE))
+					applyVisualsToBlock(block, blockID)
+					block.Parent = worldFolder
+				end
+			end
+		end
+	end
+	task.wait() 
+end
+
+for cx = 1, GRID_CHUNKS_X do
+	for cz = 1, GRID_CHUNKS_Z do renderChunk(cx, cz) end
+end
